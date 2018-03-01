@@ -17,13 +17,21 @@ limitations under the License.
 <html>
     <head>
         <title>TODO supply a title</title>
-        <meta charset="UTF-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    </head>
-    <body>
-        <div>TODO write content</div>
-    <li th:each="f: ${files}">
-        <ul th:text="${f}"></ul> 
-    </li>
+    <th:block th:include="/style"/>       
+</head>
+<body>
+<th:block th:include="/header"/>
+<div role="progressbar" class="mdc-linear-progress">
+    <div class="mdc-linear-progress__buffering-dots"></div>
+    <div class="mdc-linear-progress__buffer"></div>
+    <div class="mdc-linear-progress__bar mdc-linear-progress__primary-bar">
+        <span class="mdc-linear-progress__bar-inner"></span>
+    </div>
+    <div class="mdc-linear-progress__bar mdc-linear-progress__secondary-bar">
+        <span class="mdc-linear-progress__bar-inner"></span>
+    </div>
+</div>
+<div>Welcome to upload site</div>
+<a href="/auth">Sign in Google</a>
 </body>
 </html>

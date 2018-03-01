@@ -15,7 +15,6 @@
  */
 package com.example.appengine.demos.springboot;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
 import com.google.api.client.googleapis.auth.oauth2.GoogleBrowserClientRequestUrl;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -30,8 +29,6 @@ import com.google.api.services.drive.model.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.nio.file.Files;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,24 +38,23 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.activation.MimetypesFileTypeMap;
 import javax.servlet.http.HttpServletRequest;
-import org.springframework.boot.context.embedded.MimeMappings;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.stereotype.*;
 import org.springframework.ui.Model;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class HelloworldController {
+
+    public static final String APP_NAME = "Spring Drive";
 
     private static final Logger logger
             = Logger.getLogger(HelloworldController.class.getName());
 
     @GetMapping("/")
     public String index() {
-        return "UpFilePage";
+        return "redirect:/listFile";
     }
 
     @GetMapping("/auth")
@@ -86,11 +82,6 @@ public class HelloworldController {
             e.printStackTrace();
         }
         return "redirect:" + url;
-    }
-
-    @GetMapping("/up")
-    public String upFilePage() {
-        return "UpFilePage";
     }
 
     @PostMapping("/up")
@@ -124,6 +115,7 @@ public class HelloworldController {
                 = new Drive.Builder(
                         httpTransport,
                         jsonFactory, credential)
+                        .setApplicationName(APP_NAME)
                         .build();
 
         File fileMetadata = new File();
@@ -137,20 +129,17 @@ public class HelloworldController {
         File insertedFile = drive.files().insert(fileMetadata, mediaContent)
                 .execute();
         System.out.println("File ID: " + insertedFile.getId());
-        model.addAttribute("files", drive.files().list().execute().getItems()
-                .stream().map(File::getOriginalFilename).collect(Collectors.toList()));
-        return "FileListPage";
+
+        return "redirect:/listFile";
     }
 
     public static java.io.File convert(MultipartFile file) throws IOException {
         java.io.File convFile = new java.io.File(file.getOriginalFilename());
         convFile.createNewFile();
-        FileOutputStream fos = new FileOutputStream(convFile);
-        fos.write(file.getBytes());
-        fos.close();
-        if (convFile == null) {
-            logger.info("File is null");
+        try (FileOutputStream fos = new FileOutputStream(convFile)) {
+            fos.write(file.getBytes());
         }
+       
         return convFile;
     }
 

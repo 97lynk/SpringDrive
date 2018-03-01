@@ -1,20 +1,6 @@
-/*
- * Copyright 2018 97lynk.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.example.appengine.demos.springboot;
 
+import static com.example.appengine.demos.springboot.HelloworldController.APP_NAME;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -34,21 +20,21 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.*;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import javax.servlet.http.HttpServletResponse;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
  *
  * @author 97lynk
  */
-@Controller("/auth2callback")
+@Controller
 public class Auth2CallBackController {
 
     private static final Logger logger
             = Logger.getLogger(Auth2CallBackController.class.getName());
 
-    @RequestMapping(method = RequestMethod.GET)
-    public ModelAndView listFile(HttpServletRequest req, HttpServletResponse res) throws IOException {
+    @GetMapping("/oauth2callback")
+    public String auth2Callback(HttpServletRequest req)
+            throws IOException, GeneralSecurityException {
         //
         JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
         //
@@ -77,28 +63,54 @@ public class Auth2CallBackController {
         if (accessToken != null && !accessToken.isEmpty()) {
             req.getSession().setAttribute("access_token", accessToken);
         }
+        // 
 
+        return "redirect:/listFile";
+    }
+
+    @GetMapping("/listFile")
+    public ModelAndView listFile(HttpServletRequest req) throws IOException, GeneralSecurityException {
+        ModelAndView modelAndView = new ModelAndView("UpFilePage");
+
+        if (req.getSession().getAttribute("access_token") == null) {
+            return modelAndView;
+        }
+
+        String accessToken = (String) req.getSession().getAttribute("access_token");
+
+        if (accessToken.length() <= 0) {
+            return modelAndView;
+        }
         //
         GoogleCredential credential = new GoogleCredential().setAccessToken(accessToken);
 
         //
         Drive drive
                 = new Drive.Builder(
-                        httpTransport,
-                        jsonFactory, credential)
+                        GoogleNetHttpTransport.newTrustedTransport(),
+                        JacksonFactory.getDefaultInstance(),
+                        credential)
+                        .setApplicationName(APP_NAME)
                         .build();
+
+        //
         List<String> fileNames = new ArrayList<>();
+
         if (drive != null) {
             List<File> files = drive.files().list().execute().getItems();
+            User user = drive.about().get().execute().getUser();
             for (File file : files) {
+
                 if (file.getOriginalFilename() == null
                         || !file.getOriginalFilename().isEmpty()) {
-                    fileNames.add(file.getOriginalFilename());
+                    fileNames.add(file.getTitle());
                 }
             }
+            user.getPicture().getUrl();
+            modelAndView.addObject("files", files);
+            modelAndView.addObject("user", user);
         }
-        ModelAndView modelAndView = new ModelAndView("FileListPage");
-        modelAndView.addObject("files", fileNames);
+
         return modelAndView;
     }
 }

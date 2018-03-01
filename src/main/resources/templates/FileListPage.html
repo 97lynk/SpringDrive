@@ -17,13 +17,25 @@ limitations under the License.
 <html>
     <head>
         <title>TODO supply a title</title>
-        <meta charset="UTF-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    </head>
-    <body>
-        <div>TODO write content</div>
-    <li th:each="f: ${files}">
-        <ul th:text="${f}"></ul> 
-    </li>
+    <th:block th:include="/style"/>   
+</head>
+<body>
+<th:block th:include="/header"/>
+<main class="mdc-toolbar-fixed-adjust">
+    <div>TODO write content</div>
+    <ul class="mdc-list">
+        <li class="mdc-list-item mdc-list--two-line" th:each="f: ${files}">
+            <span class="mdc-list-item__text">
+                <span th:text="*{f.title}" th:unless="*{f.title} == null"></span>
+                <span class="mdc-list-item__secondary-text" th:with="modifiedDate=*{f.modifiedDate}" th:text="*{#calendars.format(modifiedDate,'dd/MM/yyyy')}">
+                    Second-line text
+                </span>
+            </span>
+            <span class="mdc-list-item__meta"
+                  th:text="*{f.fileSize}"></span>
+        </li>
+        <li th:each="f: ${files}" class="mdc-list-divider" role="separator"></li>
+    </ul>
+</main>
 </body>
 </html>

@@ -16,15 +16,74 @@ limitations under the License.
 -->
 <html>
     <head>
-        <title>TODO supply a title</title>
-        <meta charset="UTF-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    </head>
-    <body>
-        <form action="/up" method="POST" enctype="multipart/form-data">
-            Select image to upload:
-            <input type="file" name="file"/>
-            <input type="submit" value="Upload Image" name="submit"/>
-        </form>
-    </body>
+        <title>Tải tập tin lên Google Drive</title>
+    <th:block th:include="/style"/>      
+</head>
+<body>
+<th:block th:include="/header"/>
+<main class="mdc-toolbar-fixed-adjust">
+    <section th:if="${session[access_token] == null}" style="padding: 20px">
+        <button class="mdc-button mdc-button--unelevated" data-demo-no-js=""
+                onclick="window.open('/auth', '_self')">
+            <i class="material-icons" style="vertical-align:middle;">account_circle</i>
+            Đăng nhập Google
+        </button>
+    </section>
+    <section>
+        <div class="mdc-layout-grid">
+            <div class="mdc-layout-grid__inner">
+                <div class="mdc-layout-grid__cell" th:unless="${user == null}" th:object="${user}">
+                    <h3 class="mdc-typography--title">Thông tin</h3>
+                    <ul class="mdc-list mdc-list--two-line">
+                        <li class="mdc-list-item">
+                            <span class="mdc-list-item__graphic"><img th:src="*{picture.url}"/></span>
+                            <span class="mdc-list-item__text">
+                                <span th:text="*{displayName}"></span>
+                                <span th:text="*{emailAddress}" class="mdc-list-item__secondary-text">Secondary text</span>
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="mdc-layout-grid__cell" th:unless="${session[access_token] == null}" style="padding: 20px">
+                    <h3 class="mdc-typography--title">Tải lên</h3>
+                    <form action="/up" method="POST" enctype="multipart/form-data">
+                        <input type="file" style="display: none;" name="file" id="file" required="true"
+                               class="inputfile" data-multiple-caption="{count} files selected"/>
+                        <label for="file" class="mdc-button mdc-button--stroked mdc-button--compact mdc-ripple-upgraded"  style="vertical-align:middle;">
+                            <i class="material-icons" style="vertical-align:middle;">backup</i>
+                            <span>Choose a file…</span></label>
+                        <input type="submit" value="UPLOAD" class="mdc-button mdc-button--raised mdc-ripple-upgraded mdc-theme--secondary-light-bg"/>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <ul class="mdc-list mdc-list--two-line">
+            <div  th:each="f: ${files}">
+                <li class="mdc-list-item">
+                    <span class="mdc-list-item__text">
+                        <span th:text="*{f.title}" th:unless="*{f.title} == null"></span>
+                        <span class="mdc-list-item__secondary-text" th:text="*{f.modifiedDate}">
+                            Second-line text
+                        </span>
+                    </span>
+                    <span class="mdc-list-item__meta"
+                          th:text="*{f.fileSize}"></span>
+
+                </li>
+                <li class="mdc-list-divider" role="separator"></li>
+            </div>
+        </ul>
+    </section>
+</main>
+
+<script src="/js/custom-file-input.js"></script>
+<script>
+                    var toolbar = mdc.toolbar.MDCToolbar.attachTo(document.querySelector('.mdc-toolbar'));
+                    toolbar.fixedAdjustElement = document.querySelector('.mdc-toolbar-fixed-adjust');
+</script>
+
+</body>
 </html>
