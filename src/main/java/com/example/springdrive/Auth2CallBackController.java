@@ -1,26 +1,28 @@
-package com.example.appengine.demos.springboot;
+package com.example.springdrive;
 
-import static com.example.appengine.demos.springboot.HelloworldController.APP_NAME;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import java.security.GeneralSecurityException;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.servlet.http.HttpServletRequest;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.stereotype.*;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
-import java.io.IOException;
 import com.google.api.services.drive.Drive;
-import com.google.api.services.drive.model.*;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
+import com.google.api.services.drive.model.File;
+import com.google.api.services.drive.model.User;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.servlet.ModelAndView;
+
+import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 
 /**
  *
@@ -56,7 +58,7 @@ public class Auth2CallBackController {
                 httpTransport, jsonFactory,
                 clientSecrets.getDetails().getClientId(),
                 clientSecrets.getDetails().getClientSecret(),
-                code, "http://localhost:8082/oauth2callback");
+                code, "http://project2cloud-197215.appspot.com/oauth2callback");
 
         String accessToken = gactr.execute().getAccessToken();
         System.out.println(accessToken);
@@ -90,7 +92,7 @@ public class Auth2CallBackController {
                         GoogleNetHttpTransport.newTrustedTransport(),
                         JacksonFactory.getDefaultInstance(),
                         credential)
-                        .setApplicationName(APP_NAME)
+                        .setApplicationName(HelloworldController.APP_NAME)
                         .build();
 
         //

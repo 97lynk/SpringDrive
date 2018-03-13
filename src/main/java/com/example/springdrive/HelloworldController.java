@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.appengine.demos.springboot;
+package com.example.springdrive;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleBrowserClientRequestUrl;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
@@ -26,6 +26,15 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.activation.MimetypesFileTypeMap;
+import javax.servlet.http.HttpServletRequest;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -35,14 +44,6 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import javax.activation.MimetypesFileTypeMap;
-import javax.servlet.http.HttpServletRequest;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.stereotype.*;
-import org.springframework.ui.Model;
-import org.springframework.web.multipart.MultipartFile;
 
 @Controller
 public class HelloworldController {
@@ -71,7 +72,7 @@ public class HelloworldController {
             GoogleBrowserClientRequestUrl client
                     = new GoogleBrowserClientRequestUrl(
                             clientSecrets,
-                            "http://localhost:8082/oauth2callback",
+                            "http://project2cloud-197215.appspot.com/oauth2callback",
                             Collections.singleton(DriveScopes.DRIVE))
                             .setState("state_parameter_passthrough_value")
                             .set("access_type", "offline")
