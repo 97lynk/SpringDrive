@@ -1,12 +1,12 @@
 /**
  * Copyright 2017 Google Inc.
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,8 +20,8 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleBrowserClientRequestUr
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.FileContent;
 import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.InputStreamContent;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
@@ -38,7 +38,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import javax.activation.MimetypesFileTypeMap;
 import javax.servlet.http.HttpServletRequest;
-import java.io.FileOutputStream;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
@@ -49,24 +49,25 @@ import java.util.logging.Logger;
 @Controller
 public class DriveController {
 
-    public static final String APP_NAME = "Spring Drive";
+    private static final String APP_NAME = "Spring Drive";
+    private static final String TOKEN_NAME = "access_token";
+    private static final String AUTH_CODE = "code";
+    private static final String LINK_FILE_CLIENT_SECRET = "/client_secret.json";
 
-    private static final Logger logger
-            = Logger.getLogger(DriveController.class.getName());
+    private static final JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+    private static final InputStreamReader clientSecretStream
+            = new InputStreamReader(DriveController.class.getResourceAsStream(LINK_FILE_CLIENT_SECRET));
 
     @GetMapping("/")
     public String index() {
         return "redirect:/listFile";
     }
+
     @GetMapping("/oauth2callback")
     public String auth2Callback(HttpServletRequest req)
             throws IOException, GeneralSecurityException {
         //
-        JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-        //
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
-                jsonFactory,
-                new InputStreamReader(Controller.class.getResourceAsStream("/client_secret.json")));
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecretStream);
 
         HttpTransport httpTransport = null;
         try {
@@ -76,7 +77,7 @@ public class DriveController {
         }
 
         // code response
-        String code = req.getParameter("code");
+        String code = req.getParameter(AUTH_CODE);
         // request access token
         GoogleAuthorizationCodeTokenRequest gactr = new GoogleAuthorizationCodeTokenRequest(
                 httpTransport, jsonFactory,
@@ -87,7 +88,7 @@ public class DriveController {
         String accessToken = gactr.execute().getAccessToken();
         System.out.println(accessToken);
         if (accessToken != null && !accessToken.isEmpty()) {
-            req.getSession().setAttribute("access_token", accessToken);
+            req.getSession().setAttribute(TOKEN_NAME, accessToken);
         }
         //
 
@@ -98,45 +99,49 @@ public class DriveController {
     public ModelAndView listFile(HttpServletRequest req) throws IOException, GeneralSecurityException {
         ModelAndView modelAndView = new ModelAndView("UpFilePage");
 
-        if (req.getSession().getAttribute("access_token") == null) {
+        if (req.getSession().getAttribute(TOKEN_NAME) == null) {
             return modelAndView;
         }
 
-        String accessToken = (String) req.getSession().getAttribute("access_token");
+        String accessToken = (String) req.getSession().getAttribute(TOKEN_NAME);
 
         if (accessToken.length() <= 0) {
             return modelAndView;
         }
         //
-        GoogleCredential credential = new GoogleCredential().setAccessToken(accessToken);
 
-        //
-        Drive drive
-                = new Drive.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                JacksonFactory.getDefaultInstance(),
-                credential)
-                .setApplicationName(DriveController.APP_NAME)
-                .build();
+        try {
+            GoogleCredential credential = new GoogleCredential().setAccessToken(accessToken);
 
-        //
-        List<String> fileNames = new ArrayList<>();
+            //
+            Drive drive
+                    = new Drive.Builder(
+                    GoogleNetHttpTransport.newTrustedTransport(),
+                    jsonFactory,
+                    credential)
+                    .setApplicationName(APP_NAME)
+                    .build();
 
-        if (drive != null) {
-            List<File> files = drive.files().list().execute().getItems();
-            User user = drive.about().get().execute().getUser();
-            for (File file : files) {
+            //
+            List<String> fileNames = new ArrayList<>();
 
-                if (file.getOriginalFilename() == null
-                        || !file.getOriginalFilename().isEmpty()) {
-                    fileNames.add(file.getTitle());
+            if (drive != null) {
+                List<File> files = drive.files().list().execute().getItems();
+                User user = drive.about().get().execute().getUser();
+                for (File file : files) {
+
+                    if (file.getOriginalFilename() == null
+                            || !file.getOriginalFilename().isEmpty()) {
+                        fileNames.add(file.getTitle());
+                    }
                 }
+                user.getPicture().getUrl();
+                modelAndView.addObject("files", files);
+                modelAndView.addObject("user", user);
             }
-            user.getPicture().getUrl();
-            modelAndView.addObject("files", files);
-            modelAndView.addObject("user", user);
+        } catch (Exception ex) {
+            req.getSession().removeAttribute(TOKEN_NAME);
         }
-
         return modelAndView;
     }
 
@@ -145,21 +150,17 @@ public class DriveController {
         String url = "";
         try {
             //
-            JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-            //
-            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
-                    jsonFactory,
-                    new InputStreamReader(Controller.class.getResourceAsStream("/client_secret.json")));
+            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecretStream);
             //
             GoogleBrowserClientRequestUrl client
                     = new GoogleBrowserClientRequestUrl(
-                            clientSecrets,
-                            clientSecrets.getDetails().getRedirectUris().get(0),
-                            Collections.singleton(DriveScopes.DRIVE))
-                            .setState("state_parameter_passthrough_value")
-                            .set("access_type", "offline")
-                            .set("include_granted_scopes", "true")
-                            .setResponseTypes(Arrays.asList("code"));
+                    clientSecrets,
+                    clientSecrets.getDetails().getRedirectUris().get(0),
+                    Collections.singleton(DriveScopes.DRIVE))
+                    .setState("state_parameter_passthrough_value")
+                    .set("access_type", "offline")
+                    .set("include_granted_scopes", "true")
+                    .setResponseTypes(Arrays.asList(AUTH_CODE));
             url = client.build();
         } catch (Exception e) {
             e.printStackTrace();
@@ -168,16 +169,11 @@ public class DriveController {
     }
 
     @PostMapping("/up")
-    public String upFileSubmit(@RequestParam("file") MultipartFile file,
-            HttpServletRequest req, Model model) throws IOException {
-        String accessToken = (String) req.getSession().getAttribute("access_token");
+    public String upFileSubmit(@RequestParam("file") MultipartFile uploadedFile,
+                               HttpServletRequest req, Model model) throws IOException {
+        String accessToken = (String) req.getSession().getAttribute(TOKEN_NAME);
         if (accessToken == null || accessToken.isEmpty()) {
             return "redirect:/auth";
-        }
-        Enumeration<String> headers = req.getHeaderNames();
-        while (headers.hasMoreElements()) {
-            String h = headers.nextElement();
-            logger.info(h + " : " + req.getHeader(h));
         }
 
         //
@@ -186,47 +182,38 @@ public class DriveController {
         HttpTransport httpTransport = null;
         try {
             httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-        } catch (GeneralSecurityException ex) {
-            Logger.getLogger(DriveController.class.getName()).log(Level.SEVERE, null, ex);
+
+
+            //
+            GoogleCredential credential = new GoogleCredential().setAccessToken(accessToken);
+
+            //
+            Drive drive
+                    = new Drive.Builder(
+                    httpTransport,
+                    jsonFactory, credential)
+                    .setApplicationName(APP_NAME)
+                    .build();
+
+            String fileName = uploadedFile.getOriginalFilename();
+            String mimeType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(fileName);
+
+            File fileDrive = new File();
+            fileDrive.setOriginalFilename(fileName);
+            fileDrive.setTitle(fileName);
+
+
+            InputStreamContent inputStreamContent = new InputStreamContent(mimeType, uploadedFile.getInputStream());
+            File insertedFile = drive.files().insert(fileDrive, inputStreamContent)
+                    .execute();
+
+
+            System.out.println("File ID: " + insertedFile.getId());
+        } catch (Exception ex) {
+            model.addAttribute("msg", ex.getMessage() + ex.getClass().getName());
+            return "ErrorPage";
         }
-
-        //
-        GoogleCredential credential = new GoogleCredential().setAccessToken(accessToken);
-
-        //
-        Drive drive
-                = new Drive.Builder(
-                        httpTransport,
-                        jsonFactory, credential)
-                        .setApplicationName(APP_NAME)
-                        .build();
-
-        File fileMetadata = new File();
-        fileMetadata.setOriginalFilename(file.getOriginalFilename());
-        fileMetadata.setTitle(file.getOriginalFilename());
-        logger.info(file.getOriginalFilename());
-        String mimeType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(file.getOriginalFilename());
-        System.out.println(mimeType);
-        FileContent mediaContent = new FileContent(mimeType,
-                convert(file));
-        File insertedFile = drive.files().insert(fileMetadata, mediaContent)
-                .execute();
-
-        //delete file tạm
-        mediaContent.getFile().delete();
-        System.out.println("File ID: " + insertedFile.getId());
-
         return "redirect:/listFile";
-    }
-
-    public static java.io.File convert(MultipartFile file) throws IOException {
-        java.io.File convFile = new java.io.File(file.getOriginalFilename());
-        convFile.createNewFile();
-        try (FileOutputStream fos = new FileOutputStream(convFile)) {
-            fos.write(file.getBytes());
-        }
-       
-        return convFile;
     }
 
 }
