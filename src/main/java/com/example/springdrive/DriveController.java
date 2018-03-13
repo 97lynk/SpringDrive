@@ -15,6 +15,7 @@
  */
 package com.example.springdrive;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
 import com.google.api.client.googleapis.auth.oauth2.GoogleBrowserClientRequestUrl;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -26,12 +27,14 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
+import com.google.api.services.drive.model.User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.ModelAndView;
 
 import javax.activation.MimetypesFileTypeMap;
 import javax.servlet.http.HttpServletRequest;
@@ -39,23 +42,102 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Controller
-public class HelloworldController {
+public class DriveController {
 
     public static final String APP_NAME = "Spring Drive";
 
     private static final Logger logger
-            = Logger.getLogger(HelloworldController.class.getName());
+            = Logger.getLogger(DriveController.class.getName());
 
     @GetMapping("/")
     public String index() {
         return "redirect:/listFile";
+    }
+    @GetMapping("/oauth2callback")
+    public String auth2Callback(HttpServletRequest req)
+            throws IOException, GeneralSecurityException {
+        //
+        JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+        //
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
+                jsonFactory,
+                new InputStreamReader(Controller.class.getResourceAsStream("/client_secret.json")));
+
+        HttpTransport httpTransport = null;
+        try {
+            httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+        } catch (GeneralSecurityException ex) {
+            Logger.getLogger(Auth2CallBackController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        // code response
+        String code = req.getParameter("code");
+        // request access token
+        GoogleAuthorizationCodeTokenRequest gactr = new GoogleAuthorizationCodeTokenRequest(
+                httpTransport, jsonFactory,
+                clientSecrets.getDetails().getClientId(),
+                clientSecrets.getDetails().getClientSecret(),
+                code, clientSecrets.getDetails().getRedirectUris().get(0));
+
+        String accessToken = gactr.execute().getAccessToken();
+        System.out.println(accessToken);
+        if (accessToken != null && !accessToken.isEmpty()) {
+            req.getSession().setAttribute("access_token", accessToken);
+        }
+        //
+
+        return "redirect:/listFile";
+    }
+
+    @GetMapping("/listFile")
+    public ModelAndView listFile(HttpServletRequest req) throws IOException, GeneralSecurityException {
+        ModelAndView modelAndView = new ModelAndView("UpFilePage");
+
+        if (req.getSession().getAttribute("access_token") == null) {
+            return modelAndView;
+        }
+
+        String accessToken = (String) req.getSession().getAttribute("access_token");
+
+        if (accessToken.length() <= 0) {
+            return modelAndView;
+        }
+        //
+        GoogleCredential credential = new GoogleCredential().setAccessToken(accessToken);
+
+        //
+        Drive drive
+                = new Drive.Builder(
+                GoogleNetHttpTransport.newTrustedTransport(),
+                JacksonFactory.getDefaultInstance(),
+                credential)
+                .setApplicationName(DriveController.APP_NAME)
+                .build();
+
+        //
+        List<String> fileNames = new ArrayList<>();
+
+        if (drive != null) {
+            List<File> files = drive.files().list().execute().getItems();
+            User user = drive.about().get().execute().getUser();
+            for (File file : files) {
+
+                if (file.getOriginalFilename() == null
+                        || !file.getOriginalFilename().isEmpty()) {
+                    fileNames.add(file.getTitle());
+                }
+            }
+            user.getPicture().getUrl();
+            modelAndView.addObject("files", files);
+            modelAndView.addObject("user", user);
+        }
+
+        return modelAndView;
     }
 
     @GetMapping("/auth")
@@ -72,7 +154,7 @@ public class HelloworldController {
             GoogleBrowserClientRequestUrl client
                     = new GoogleBrowserClientRequestUrl(
                             clientSecrets,
-                            "http://project2cloud-197215.appspot.com/oauth2callback",
+                            clientSecrets.getDetails().getRedirectUris().get(0),
                             Collections.singleton(DriveScopes.DRIVE))
                             .setState("state_parameter_passthrough_value")
                             .set("access_type", "offline")
@@ -129,6 +211,9 @@ public class HelloworldController {
                 convert(file));
         File insertedFile = drive.files().insert(fileMetadata, mediaContent)
                 .execute();
+
+        //delete file tạm
+        mediaContent.getFile().delete();
         System.out.println("File ID: " + insertedFile.getId());
 
         return "redirect:/listFile";

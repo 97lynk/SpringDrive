@@ -17,5 +17,6 @@ limitations under the License.
   <runtime>java8</runtime>
   <system-properties>
     <property name="java.util.logging.config.file" value="WEB-INF/classes/logging.properties"/>
-  </system-properties>    
+  </system-properties>
+  <sessions-enabled>true</sessions-enabled>
 </appengine-web-app>
