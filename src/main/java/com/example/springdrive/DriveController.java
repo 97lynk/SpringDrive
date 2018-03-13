@@ -72,7 +72,7 @@ public class DriveController {
         try {
             httpTransport = GoogleNetHttpTransport.newTrustedTransport();
         } catch (GeneralSecurityException ex) {
-            Logger.getLogger(Auth2CallBackController.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DriveController.class.getName()).log(Level.SEVERE, null, ex);
         }
 
         // code response
@@ -187,7 +187,7 @@ public class DriveController {
         try {
             httpTransport = GoogleNetHttpTransport.newTrustedTransport();
         } catch (GeneralSecurityException ex) {
-            Logger.getLogger(Auth2CallBackController.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DriveController.class.getName()).log(Level.SEVERE, null, ex);
         }
 
         //
